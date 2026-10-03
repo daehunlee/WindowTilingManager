@@ -1,0 +1,10 @@
+# 줄 끝 문자를 저장소에서는 LF로 통일하고, 각 PC에서는 운영체제에 맞게 변환
+* text=auto
+
+*.cs      text diff=csharp
+*.xaml    text
+*.csproj  text
+*.md      text
+
+*.ico     binary
+*.png     binary

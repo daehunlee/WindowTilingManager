@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- WPF 앱 설정 -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <RootNamespace>WindowTilingManager</RootNamespace>
+    <AssemblyName>WindowTilingManager</AssemblyName>
+    <Version>1.5.0</Version>
+    <!-- 실행 파일(exe) 아이콘 -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- 창 제목 표시줄/작업 표시줄 아이콘 (MainWindow.xaml 의 Icon 에서 사용) -->
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <None Remove="Assets\app_preview.png" />
+  </ItemGroup>
+
+  <!--
+    폴더 안에 Visual Studio 템플릿으로 생성된 중첩 프로젝트(WindowTilingManager\)가 있으면
+    App / MainWindow 클래스가 중복 정의되어 빌드가 실패하므로 컴파일 대상에서 제외합니다.
+  -->
+  <ItemGroup>
+    <Compile Remove="WindowTilingManager\**;_to_delete\**" />
+    <Page Remove="WindowTilingManager\**;_to_delete\**" />
+    <None Remove="WindowTilingManager\**;_to_delete\**" />
+    <EmbeddedResource Remove="WindowTilingManager\**;_to_delete\**" />
+  </ItemGroup>
+
+</Project>
