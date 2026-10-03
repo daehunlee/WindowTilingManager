@@ -24,10 +24,10 @@
     App / MainWindow 클래스가 중복 정의되어 빌드가 실패하므로 컴파일 대상에서 제외합니다.
   -->
   <ItemGroup>
-    <Compile Remove="WindowTilingManager\**;_to_delete\**" />
-    <Page Remove="WindowTilingManager\**;_to_delete\**" />
-    <None Remove="WindowTilingManager\**;_to_delete\**" />
-    <EmbeddedResource Remove="WindowTilingManager\**;_to_delete\**" />
+    <Compile Remove="WindowTilingManager\**;_to_delete\**;release\**;publish\**;docs\**" />
+    <Page Remove="WindowTilingManager\**;_to_delete\**;release\**;publish\**;docs\**" />
+    <None Remove="WindowTilingManager\**;_to_delete\**;release\**;publish\**;docs\**" />
+    <EmbeddedResource Remove="WindowTilingManager\**;_to_delete\**;release\**;publish\**;docs\**" />
   </ItemGroup>
 
 </Project>

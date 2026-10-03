@@ -1,0 +1,53 @@
+name: Release
+
+# 버전 태그(예: v1.5.0)를 push 하면 Windows 에서 빌드하여
+# GitHub Releases 에 실행 파일 zip 을 올립니다.
+# Actions 탭에서 수동 실행(Run workflow)하면 빌드만 하고 결과를 Artifacts 로 받을 수 있습니다.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish (self-contained single exe)
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $ver = $env:GITHUB_REF_NAME.TrimStart('v') }
+          else { $ver = ([xml](Get-Content WindowTilingManager.csproj)).Project.PropertyGroup.Version | Select-Object -First 1; $ver = "$ver-dev" }
+          "VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          dotnet publish WindowTilingManager.csproj -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:Version=$ver `
+            -o publish/WindowTilingManager
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          Copy-Item README.md, LICENSE -Destination publish/WindowTilingManager
+          Get-ChildItem -Filter '*.md' | Where-Object Name -ne 'README.md' | Copy-Item -Destination publish/WindowTilingManager
+          Compress-Archive -Path publish/WindowTilingManager -DestinationPath "WindowTilingManager-$ver-win-x64.zip"
+
+      - name: Upload to GitHub Releases
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: WindowTilingManager-*-win-x64.zip
+          generate_release_notes: true
+
+      - name: Upload artifact (manual run)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: WindowTilingManager-${{ env.VERSION }}-win-x64
+          path: publish/WindowTilingManager
