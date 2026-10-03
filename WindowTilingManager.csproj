@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>WindowTilingManager</RootNamespace>
     <AssemblyName>WindowTilingManager</AssemblyName>
-    <Version>1.5.0</Version>
+    <Version>1.6.0</Version>
     <!-- 실행 파일(exe) 아이콘 -->
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
@@ -17,6 +17,16 @@
   <ItemGroup>
     <Resource Include="Assets\app.ico" />
     <None Remove="Assets\app_preview.png" />
+  </ItemGroup>
+
+  <!--
+    다국어: Languages\*.json 을 프로그램에 내장하고(기본 언어),
+    실행 파일 옆 Languages 폴더에도 복사합니다(사용자가 고치거나 새 언어 파일을 추가하는 곳).
+  -->
+  <ItemGroup>
+    <None Remove="Languages\**" />
+    <EmbeddedResource Include="Languages\*.json" LogicalName="Languages.%(Filename)%(Extension)" />
+    <Content Include="Languages\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <!--

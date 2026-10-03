@@ -37,7 +37,7 @@ namespace WindowTilingManager.Controls
         public int SelectedIndex => _selected;
 
         public override string DisplayTitle =>
-            _selected >= 0 && _selected < _tabs.Count ? _tabs[_selected].DisplayTitle : "탭";
+            _selected >= 0 && _selected < _tabs.Count ? _tabs[_selected].DisplayTitle : Loc.T("Tabs.Tab");
 
         /// <summary>탭을 추가합니다. node 는 다른 부모에 붙어 있지 않아야 합니다.</summary>
         public void AddTab(LayoutNode node, bool select = true)
@@ -68,7 +68,7 @@ namespace WindowTilingManager.Controls
                 var button = new Button
                 {
                     Content = Shorten(title, 28),
-                    ToolTip = title + "\n(오른쪽 클릭: 메뉴, 가운데 클릭: 탭 닫기)",
+                    ToolTip = title + "\n" + Loc.T("Tabs.HeaderHint"),
                     Padding = new Thickness(10, 2, 10, 2),
                     Margin = new Thickness(0, 0, 1, 0),
                     BorderThickness = new Thickness(0),
@@ -104,9 +104,9 @@ namespace WindowTilingManager.Controls
             }
 
             var menu = new ContextMenu { PlacementTarget = anchor };
-            var add = new MenuItem { Header = "새 탭" };
+            var add = new MenuItem { Header = Loc.T("Tabs.New") };
             add.Click += (_, _) => AddTab(new CellControl());
-            var close = new MenuItem { Header = "탭 닫기 (안의 창은 바탕화면으로)" };
+            var close = new MenuItem { Header = Loc.T("Tabs.CloseReleasing") };
             close.Click += (_, _) => CloseTab(index);
             menu.Items.Add(add);
             menu.Items.Add(close);

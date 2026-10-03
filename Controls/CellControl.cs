@@ -84,11 +84,11 @@ namespace WindowTilingManager.Controls
             get
             {
                 if (_host != null)
-                    return string.IsNullOrWhiteSpace(_host.Title) ? "(제목 없음)" : _host.Title;
-                if (_busy) return "실행 대기 중...";
+                    return string.IsNullOrWhiteSpace(_host.Title) ? Loc.T("Cell.NoTitle") : _host.Title;
+                if (_busy) return Loc.T("Cell.Launching");
                 return string.IsNullOrEmpty(ProgramPath)
-                    ? "빈 셀"
-                    : $"빈 셀 ({Path.GetFileNameWithoutExtension(ProgramPath)})";
+                    ? Loc.T("Cell.Empty")
+                    : Loc.T("Cell.EmptyWithProgram", Path.GetFileNameWithoutExtension(ProgramPath));
             }
         }
 
@@ -198,8 +198,8 @@ namespace WindowTilingManager.Controls
                 Split(direction);
                 return;
             }
-            string what = direction == SplitDirection.LeftRight ? "좌우" : "상하";
-            int? n = AskCount($"{what}로 나누기", $"몇 칸으로 나눌까요? (2~{MaxSplit})", 3, 2, MaxSplit);
+            string title = direction == SplitDirection.LeftRight ? Loc.T("Menu.SplitLeftRight") : Loc.T("Menu.SplitTopBottom");
+            int? n = AskCount(title, Loc.T("Ask.SplitCount", MaxSplit), 3, 2, MaxSplit);
             if (n.HasValue) SplitInto(direction, n.Value);
         }
 
@@ -210,7 +210,7 @@ namespace WindowTilingManager.Controls
                 AddTab();
                 return;
             }
-            int? n = AskCount("탭 추가", $"몇 개의 탭을 추가할까요? (1~{MaxTabs})", 2, 1, MaxTabs);
+            int? n = AskCount(Loc.T("Menu.AddTab"), Loc.T("Ask.TabCount", MaxTabs), 2, 1, MaxTabs);
             if (n.HasValue) AddTabs(n.Value);
         }
 
@@ -227,7 +227,7 @@ namespace WindowTilingManager.Controls
                 if (dialog.ShowDialog() != true) return null;
 
                 if (int.TryParse(dialog.Value, out int n) && n >= min && n <= max) return n;
-                ShowWarning($"{min}에서 {max} 사이의 숫자를 입력하세요.");
+                ShowWarning(Loc.T("Ask.NumberRange", min, max));
             }
         }
 
@@ -239,7 +239,7 @@ namespace WindowTilingManager.Controls
         /// </summary>
         private MenuItem BuildSameKindMenu()
         {
-            var root = new MenuItem { Header = "같은 종류의 창 모두 배치", IsEnabled = !_busy };
+            var root = new MenuItem { Header = Loc.T("Menu.ArrangeSameKind"), IsEnabled = !_busy };
             var groups = WindowEnumerator.GetTopLevelWindows()
                 .GroupBy(w => w.ProcessName, StringComparer.OrdinalIgnoreCase)
                 .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
@@ -247,19 +247,19 @@ namespace WindowTilingManager.Controls
 
             if (groups.Count == 0)
             {
-                root.Items.Add(new MenuItem { Header = "(배치할 수 있는 창이 없습니다)", IsEnabled = false });
+                root.Items.Add(new MenuItem { Header = Loc.T("Menu.NoWindowsToArrange"), IsEnabled = false });
                 return root;
             }
 
             foreach (var group in groups)
             {
                 var windows = group.ToList();
-                var item = new MenuItem { Header = new TextBlock { Text = $"{group.Key}  ({windows.Count}개)" } };
+                var item = new MenuItem { Header = new TextBlock { Text = Loc.T("Arrange.KindEntry", group.Key, windows.Count) } };
                 item.ToolTip = string.Join("\n", windows.Take(15).Select(w => w.Title)) + (windows.Count > 15 ? "\n..." : "");
 
-                AddItem(item.Items, "탭으로", () => _ = ArrangeManyAsync(ToItems(windows), ArrangeMode.Tabs));
-                AddItem(item.Items, "좌우로 나란히", () => _ = ArrangeManyAsync(ToItems(windows), ArrangeMode.LeftRight));
-                AddItem(item.Items, "상하로 나란히", () => _ = ArrangeManyAsync(ToItems(windows), ArrangeMode.TopBottom));
+                AddItem(item.Items, Loc.T("Arrange.Tabs"), () => _ = ArrangeManyAsync(ToItems(windows), ArrangeMode.Tabs));
+                AddItem(item.Items, Loc.T("Arrange.LeftRight"), () => _ = ArrangeManyAsync(ToItems(windows), ArrangeMode.LeftRight));
+                AddItem(item.Items, Loc.T("Arrange.TopBottom"), () => _ = ArrangeManyAsync(ToItems(windows), ArrangeMode.TopBottom));
                 root.Items.Add(item);
             }
             return root;
@@ -269,7 +269,7 @@ namespace WindowTilingManager.Controls
             windows.Select(w => new ArrangeItem
             {
                 IsChecked = true,
-                Kind = "실행 중",
+                Kind = Loc.T("Arrange.KindRunning"),
                 Name = w.ProcessName,
                 Detail = w.Title,
                 Handle = w.Handle
@@ -326,7 +326,7 @@ namespace WindowTilingManager.Controls
             }
 
             if (failed.Count > 0)
-                ShowWarning("다음 항목은 배치하지 못했습니다. 빈 셀에 직접 배정하세요.\n\n- " + string.Join("\n- ", failed));
+                ShowWarning(Loc.T("Arrange.Failed") + "\n\n- " + string.Join("\n- ", failed));
         }
 
         /// <summary>배정된 창을 바탕화면으로 돌려보낸 뒤 이 셀을 닫습니다.</summary>
@@ -369,7 +369,7 @@ namespace WindowTilingManager.Controls
         {
             if (!NativeMethods.IsWindow(hwnd))
             {
-                if (showErrors) ShowWarning("선택한 창이 이미 닫혔습니다.");
+                if (showErrors) ShowWarning(Loc.T("Error.WindowClosed"));
                 return false;
             }
 
@@ -381,7 +381,7 @@ namespace WindowTilingManager.Controls
             var host = WindowHost.TryAttach(hwnd, ownerHwnd, out string? error);
             if (host == null)
             {
-                if (showErrors) ShowWarning(error ?? "창을 가져오지 못했습니다.");
+                if (showErrors) ShowWarning(error ?? Loc.T("Error.AttachFailed"));
                 return false;
             }
 
@@ -494,13 +494,24 @@ namespace WindowTilingManager.Controls
         /// <summary>주기적 점검 (창 닫힘, 제목 변경).</summary>
         public void MonitorTick() => _host?.Tick();
 
+        /// <summary>언어가 바뀌었을 때 셀 안의 안내 문구와 제목을 다시 표시합니다.</summary>
+        public void RefreshTexts()
+        {
+            if (_busy) return;
+            UpdatePlaceholder();
+            NotifyTitleChanged();
+        }
+
+        /// <summary>붙어 있는 창을 메인 창 위로 올립니다 (메인 창이 활성일 때만).</summary>
+        public void BringWindowToFront() => _host?.BringToFront();
+
         private void CloseEmbeddedProgram()
         {
             if (_host == null) return;
             var answer = MessageBox.Show(
                 Window.GetWindow(this) ?? Application.Current.MainWindow!,
-                $"'{_host.Title}' 창에 닫기 요청을 보낼까요?\n(저장하지 않은 내용이 있으면 해당 프로그램이 확인을 요청합니다)",
-                "창 닫기", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+                Loc.T("CloseProgram.Confirm", _host.Title),
+                Loc.T("CloseProgram.Title"), MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (answer == MessageBoxResult.OK) _host.CloseTarget();
         }
 
@@ -518,8 +529,8 @@ namespace WindowTilingManager.Controls
             {
                 var dialog = new OpenFileDialog
                 {
-                    Title = "실행할 프로그램 선택",
-                    Filter = "프로그램 (*.exe;*.lnk;*.bat;*.cmd)|*.exe;*.lnk;*.bat;*.cmd|모든 파일 (*.*)|*.*"
+                    Title = Loc.T("Launch.PickTitle"),
+                    Filter = Loc.T("Common.ExeFilter")
                 };
                 if (dialog.ShowDialog() != true) return false;
                 path = dialog.FileName;
@@ -538,7 +549,7 @@ namespace WindowTilingManager.Controls
             }
             catch (Exception ex)
             {
-                if (showErrors) ShowWarning($"프로그램을 실행하지 못했습니다.\n{ex.Message}");
+                if (showErrors) ShowWarning(Loc.T("Launch.Failed", ex.Message));
                 return false;
             }
 
@@ -546,7 +557,7 @@ namespace WindowTilingManager.Controls
             try { pid = process?.Id; } catch { /* 셸 실행 등으로 프로세스 정보를 얻지 못할 수 있음 */ }
 
             _busy = true;
-            _busyText = $"'{Path.GetFileName(path)}' 실행 중...\n창이 나타나기를 기다리고 있습니다.";
+            _busyText = Loc.T("Launch.Waiting", Path.GetFileName(path));
             UpdatePlaceholder();
             NotifyTitleChanged();
 
@@ -595,7 +606,7 @@ namespace WindowTilingManager.Controls
             }
 
             if (showErrors)
-                ShowWarning("실행한 프로그램의 창을 찾지 못했습니다.\n창이 뜬 뒤 메뉴의 '실행 중인 창 배정'으로 직접 선택하거나, 창을 끌어다 이 셀에 놓으세요.");
+                ShowWarning(Loc.T("Launch.WindowNotFound"));
             return false;
         }
 
@@ -641,49 +652,49 @@ namespace WindowTilingManager.Controls
             menu.Items.Add(new Separator());
 
             // 창 배정
-            AddItem(menu.Items, "실행 중인 창 배정...", AssignRunningWindow, !_busy);
-            AddItem(menu.Items, "프로그램 실행...", () => _ = LaunchProgramAsync(null), !_busy);
+            AddItem(menu.Items, Loc.T("Menu.AssignRunning"), AssignRunningWindow, !_busy);
+            AddItem(menu.Items, Loc.T("Menu.Launch"), () => _ = LaunchProgramAsync(null), !_busy);
             if (!HasWindow && CanRelaunch)
-                AddItem(menu.Items, new TextBlock { Text = $"이전 프로그램 다시 실행 ({Path.GetFileName(ProgramPath)})" },
+                AddItem(menu.Items, new TextBlock { Text = Loc.T("Menu.Relaunch", Path.GetFileName(ProgramPath)) },
                     () => _ = LaunchProgramAsync(ProgramPath), !_busy);
             menu.Items.Add(new Separator());
 
             // 레이아웃
-            AddItem(menu.Items, "좌우로 나누기", () => SplitFromMenu(SplitDirection.LeftRight)).InputGestureText = "Ctrl+클릭: 칸 수 지정";
-            AddItem(menu.Items, "상하로 나누기", () => SplitFromMenu(SplitDirection.TopBottom)).InputGestureText = "Ctrl+클릭: 칸 수 지정";
-            AddItem(menu.Items, "탭 추가", AddTabFromMenu).InputGestureText = "Ctrl+클릭: 개수 지정";
-            AddItem(menu.Items, "여러 프로그램 한꺼번에 배치...", ArrangeManyFromMenu, !_busy);
+            AddItem(menu.Items, Loc.T("Menu.SplitLeftRight"), () => SplitFromMenu(SplitDirection.LeftRight)).InputGestureText = Loc.T("Menu.CtrlClickCount");
+            AddItem(menu.Items, Loc.T("Menu.SplitTopBottom"), () => SplitFromMenu(SplitDirection.TopBottom)).InputGestureText = Loc.T("Menu.CtrlClickCount");
+            AddItem(menu.Items, Loc.T("Menu.AddTab"), AddTabFromMenu).InputGestureText = Loc.T("Menu.CtrlClickTabs");
+            AddItem(menu.Items, Loc.T("Menu.ArrangeMany"), ArrangeManyFromMenu, !_busy);
             menu.Items.Add(BuildSameKindMenu());
             menu.Items.Add(new Separator());
 
             // 보기
             var workspace = Workspace.FindOwner(this);
-            var zoom = AddItem(menu.Items, "셀 최대화", () => workspace?.ToggleZoom(this), workspace != null);
+            var zoom = AddItem(menu.Items, Loc.T("Menu.ZoomCell"), () => workspace?.ToggleZoom(this), workspace != null);
             zoom.IsChecked = workspace != null && ReferenceEquals(workspace.ZoomedCell, this);
             zoom.InputGestureText = "Ctrl+Alt+Z";
 
             var shell = AppShell.Current;
             if (shell != null)
             {
-                var full = AddItem(menu.Items, "전체 화면", shell.ToggleFullscreen);
+                var full = AddItem(menu.Items, Loc.T("Menu.Fullscreen"), shell.ToggleFullscreen);
                 full.IsChecked = shell.IsFullscreen;
                 full.InputGestureText = "F11";
 
-                var sets = new MenuItem { Header = new TextBlock { Text = $"세트 ({CurrentSetTitle(shell)})" } };
+                var sets = new MenuItem { Header = new TextBlock { Text = Loc.T("Menu.SetsOf", CurrentSetTitle(shell)) } };
                 AppShell.FillSetMenu(sets.Items, shell);
                 menu.Items.Add(sets);
             }
             menu.Items.Add(new Separator());
 
             // 창
-            AddItem(menu.Items, "창 분리 (바탕화면으로 되돌리기)", () => ReleaseWindow(), HasWindow);
-            AddItem(menu.Items, "창의 프로그램 닫기...", CloseEmbeddedProgram, HasWindow);
+            AddItem(menu.Items, Loc.T("Menu.ReleaseWindow"), () => ReleaseWindow(), HasWindow);
+            AddItem(menu.Items, Loc.T("Menu.CloseProgram"), CloseEmbeddedProgram, HasWindow);
             menu.Items.Add(new Separator());
-            AddItem(menu.Items, ParentContainer is TabsNode ? "탭 닫기" : "셀 닫기", () => CloseCell());
+            AddItem(menu.Items, ParentContainer is TabsNode ? Loc.T("Menu.CloseTab") : Loc.T("Menu.CloseCell"), () => CloseCell());
             if (shell != null)
             {
-                AddItem(menu.Items, "셀 여러 개 선택해서 닫기...", shell.CloseCellsInCurrentSet);
-                AddItem(menu.Items, "현재 세트 초기화...", () => shell.ResetSet(shell.CurrentSetIndex));
+                AddItem(menu.Items, Loc.T("Cell.CloseMany"), shell.CloseCellsInCurrentSet);
+                AddItem(menu.Items, Loc.T("Set.ResetCurrent"), () => shell.ResetSet(shell.CurrentSetIndex));
             }
 
             // 마우스 위치에 표시 (셀 안의 다른 프로그램 창 위에서 열릴 수도 있으므로 화면 좌표 사용)
@@ -735,17 +746,14 @@ namespace WindowTilingManager.Controls
                 return;
             }
 
-            string text = "빈 셀\n\n오른쪽 클릭으로 메뉴를 엽니다.\n다른 창의 제목 표시줄을 끌어 여기에 놓거나\n실행 파일을 끌어다 놓으면 배정됩니다.";
+            string text = Loc.T("Cell.EmptyHint");
             if (_restorePending && !string.IsNullOrEmpty(ProgramPath))
             {
                 string title = string.IsNullOrWhiteSpace(SavedTitle) ? "" : $"\n\"{SavedTitle}\"";
-                text = $"복원 대기 중{title}\n({Path.GetFileName(ProgramPath)})\n\n" +
-                       "이 프로그램이 실행 중이 아니어서 비워 두었습니다.\n" +
-                       "프로그램을 직접 띄운 뒤 메뉴 → 세트 → 실행 중인 이전 창 다시 붙이기를 고르거나,\n" +
-                       "창을 끌어다 여기에 놓으세요.";
+                text = Loc.T("Cell.PendingHint", title, Path.GetFileName(ProgramPath));
             }
             else if (!string.IsNullOrEmpty(ProgramPath))
-                text += $"\n\n이전 프로그램: {Path.GetFileName(ProgramPath)}";
+                text += "\n\n" + Loc.T("Cell.PreviousProgram", Path.GetFileName(ProgramPath));
             _placeholderText.Text = text;
         }
 

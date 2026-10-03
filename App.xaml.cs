@@ -15,7 +15,7 @@ namespace WindowTilingManager
         private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             MessageBox.Show(
-                "예기치 않은 오류가 발생했습니다.\n\n" + e.Exception.Message,
+                Loc.T("App.UnexpectedError", e.Exception.Message),
                 "Window Tiling Manager",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);

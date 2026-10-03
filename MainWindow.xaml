@@ -8,37 +8,37 @@
         SourceInitialized="Window_SourceInitialized"
         Closing="Window_Closing"
         PreviewKeyDown="Window_PreviewKeyDown">
+    <!-- 메뉴 글자는 언어 파일(Languages/*.json)에서 읽어 코드(ApplyLanguage)에서 채웁니다. -->
     <DockPanel>
         <Menu x:Name="MainMenu" DockPanel.Dock="Top">
-            <MenuItem Header="파일(_F)">
-                <MenuItem Header="레이아웃 지금 저장" Click="SaveLayout_Click"/>
-                <MenuItem x:Name="RestoreOnStartupMenuItem" Header="시작할 때 실행 중인 이전 창 다시 붙이기" IsCheckable="True" IsChecked="True"
-                          ToolTip="종료할 때 셀에 있던 창과 같은 프로그램의 창이 실행 중이면, 다음에 시작할 때 제자리에 다시 붙입니다. 프로그램을 새로 실행하지는 않습니다."/>
-                <MenuItem Header="실행 중인 이전 창 다시 붙이기" Click="Reattach_Click"
-                          ToolTip="비어 있는 복원 대기 셀에, 지금 실행 중인 같은 프로그램의 창을 붙입니다"/>
+            <MenuItem x:Name="FileMenu">
+                <MenuItem x:Name="SaveLayoutMenuItem" Click="SaveLayout_Click"/>
+                <MenuItem x:Name="RestoreOnStartupMenuItem" IsCheckable="True" IsChecked="True"/>
+                <MenuItem x:Name="ReattachMenuItem" Click="Reattach_Click"/>
                 <Separator/>
-                <MenuItem Header="모든 창 분리" Click="ReleaseAll_Click"
-                          ToolTip="현재 세트의 모든 창을 바탕화면으로 돌려보냅니다 (레이아웃 유지)"/>
-                <MenuItem Header="셀 여러 개 선택해서 닫기..." Click="CloseCells_Click"
-                          ToolTip="현재 세트의 셀(탭 포함)을 목록에서 여러 개 골라 한 번에 닫습니다"/>
-                <MenuItem Header="현재 세트 초기화..." Click="ResetLayout_Click"
-                          ToolTip="현재 세트의 모든 창을 바탕화면으로 돌려보내고 빈 셀 하나로 되돌립니다"/>
+                <MenuItem x:Name="ReleaseAllMenuItem" Click="ReleaseAll_Click"/>
+                <MenuItem x:Name="CloseCellsMenuItem" Click="CloseCells_Click"/>
+                <MenuItem x:Name="ResetSetMenuItem" Click="ResetLayout_Click"/>
                 <Separator/>
-                <MenuItem Header="종료(_X)" Click="Exit_Click"/>
+                <MenuItem x:Name="ExitMenuItem" Click="Exit_Click"/>
             </MenuItem>
-            <MenuItem x:Name="SetMenu" Header="세트(_S)" SubmenuOpened="SetMenu_SubmenuOpened">
-                <MenuItem Header="(목록)"/>
+            <MenuItem x:Name="SetMenu" SubmenuOpened="SetMenu_SubmenuOpened">
+                <MenuItem Header="..."/>
             </MenuItem>
-            <MenuItem Header="보기(_V)">
-                <MenuItem x:Name="FullscreenMenuItem" Header="전체 화면" InputGestureText="F11" Click="Fullscreen_Click"/>
-                <MenuItem x:Name="EdgeSwitchMenuItem" Header="전체 화면에서 화면 왼쪽/오른쪽 끝으로 세트 전환" IsCheckable="True" IsChecked="True"/>
-                <MenuItem x:Name="TopmostMenuItem" Header="항상 위에 표시" IsCheckable="True"
+            <MenuItem x:Name="ViewMenu">
+                <MenuItem x:Name="FullscreenMenuItem" InputGestureText="F11" Click="Fullscreen_Click"/>
+                <MenuItem x:Name="EdgeSwitchMenuItem" IsCheckable="True" IsChecked="True"/>
+                <MenuItem x:Name="TopmostMenuItem" IsCheckable="True"
                           Checked="Topmost_Changed" Unchecked="Topmost_Changed"/>
                 <Separator/>
-                <MenuItem x:Name="DragToCellMenuItem" Header="창을 끌어다 셀에 놓으면 배정" IsCheckable="True" IsChecked="True"/>
+                <MenuItem x:Name="DragToCellMenuItem" IsCheckable="True" IsChecked="True"/>
+                <Separator/>
+                <MenuItem x:Name="LanguageMenu" SubmenuOpened="LanguageMenu_SubmenuOpened">
+                    <MenuItem Header="..."/>
+                </MenuItem>
             </MenuItem>
-            <MenuItem Header="도움말(_H)">
-                <MenuItem Header="사용법" Click="Help_Click"/>
+            <MenuItem x:Name="HelpMenu">
+                <MenuItem x:Name="HelpMenuItem" Click="Help_Click"/>
             </MenuItem>
         </Menu>
 
@@ -49,7 +49,7 @@
 
         <StatusBar x:Name="StatusBarControl" DockPanel.Dock="Bottom" Background="#007ACC" Foreground="White">
             <StatusBarItem>
-                <TextBlock x:Name="StatusText" Text="준비"/>
+                <TextBlock x:Name="StatusText"/>
             </StatusBarItem>
         </StatusBar>
 

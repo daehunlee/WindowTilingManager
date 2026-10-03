@@ -27,12 +27,15 @@ namespace WindowTilingManager.Controls
 
         /// <summary>다른 창을 끌어다 셀에 놓으면 배정.</summary>
         public bool DragToCell { get; set; } = true;
+
+        /// <summary>표시 언어 코드 (예: "ko", "en"). 비어 있으면 Windows 표시 언어를 따름.</summary>
+        public string? Language { get; set; }
     }
 
     /// <summary>세트 하나.</summary>
     public sealed class SetModel
     {
-        public string Name { get; set; } = "세트";
+        public string Name { get; set; } = "";
         public NodeModel? Root { get; set; }
     }
 

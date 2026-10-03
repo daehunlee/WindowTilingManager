@@ -49,7 +49,7 @@ namespace WindowTilingManager.Controls
 
         public MultiArrangeDialog()
         {
-            Title = "여러 프로그램 한꺼번에 배치";
+            Title = Loc.T("Arrange.Title");
             Width = 760;
             Height = 520;
             MinWidth = 480;
@@ -58,19 +58,18 @@ namespace WindowTilingManager.Controls
             ShowInTaskbar = false;
 
             // 배치 방법
-            _tabs = new RadioButton { Content = "탭으로", IsChecked = true, Margin = new Thickness(0, 0, 16, 0), GroupName = "mode" };
-            _leftRight = new RadioButton { Content = "좌우로 나란히", Margin = new Thickness(0, 0, 16, 0), GroupName = "mode" };
-            _topBottom = new RadioButton { Content = "상하로 나란히", GroupName = "mode" };
+            _tabs = new RadioButton { Content = Loc.T("Arrange.Tabs"), IsChecked = true, Margin = new Thickness(0, 0, 16, 0), GroupName = "mode" };
+            _leftRight = new RadioButton { Content = Loc.T("Arrange.LeftRight"), Margin = new Thickness(0, 0, 16, 0), GroupName = "mode" };
+            _topBottom = new RadioButton { Content = Loc.T("Arrange.TopBottom"), GroupName = "mode" };
             var modeRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-            modeRow.Children.Add(new TextBlock { Text = "배치 방법:", Margin = new Thickness(0, 0, 10, 0), FontWeight = FontWeights.Bold });
+            modeRow.Children.Add(new TextBlock { Text = Loc.T("Arrange.Mode"), Margin = new Thickness(0, 0, 10, 0), FontWeight = FontWeights.Bold });
             modeRow.Children.Add(_tabs);
             modeRow.Children.Add(_leftRight);
             modeRow.Children.Add(_topBottom);
 
             var hint = new TextBlock
             {
-                Text = "배치할 항목에 체크하세요. '종류별 선택'으로 같은 프로그램의 창(예: 모든 notepad)을 한 번에 체크할 수 있습니다. " +
-                       "목록 순서대로 배치되며, 지금 셀이 비어 있으면 첫 항목이 이 셀에 들어갑니다.",
+                Text = Loc.T("Arrange.Hint"),
                 TextWrapping = TextWrapping.Wrap,
                 Foreground = System.Windows.Media.Brushes.DimGray,
                 Margin = new Thickness(0, 0, 0, 8)
@@ -78,14 +77,14 @@ namespace WindowTilingManager.Controls
 
             // 프로그램 종류별 일괄 선택 (예: 모든 notepad 창)
             _kinds = new ComboBox { MinWidth = 220, Margin = new Thickness(0, 0, 8, 0) };
-            var checkKind = new Button { Content = "이 종류 모두 체크", Padding = new Thickness(10, 2, 10, 2) };
+            var checkKind = new Button { Content = Loc.T("Arrange.CheckKind"), Padding = new Thickness(10, 2, 10, 2) };
             checkKind.Click += (_, _) => SetKindChecked(true);
-            var uncheckKind = new Button { Content = "이 종류 체크 해제", Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(6, 0, 0, 0) };
+            var uncheckKind = new Button { Content = Loc.T("Arrange.UncheckKind"), Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(6, 0, 0, 0) };
             uncheckKind.Click += (_, _) => SetKindChecked(false);
-            var uncheckAll = new Button { Content = "전체 해제", Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(6, 0, 0, 0) };
+            var uncheckAll = new Button { Content = Loc.T("Common.UncheckAll"), Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(6, 0, 0, 0) };
             uncheckAll.Click += (_, _) => UncheckAll();
             var kindRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-            kindRow.Children.Add(new TextBlock { Text = "종류별 선택:", Margin = new Thickness(0, 3, 10, 0), FontWeight = FontWeights.Bold });
+            kindRow.Children.Add(new TextBlock { Text = Loc.T("Arrange.ByKind"), Margin = new Thickness(0, 3, 10, 0), FontWeight = FontWeights.Bold });
             kindRow.Children.Add(_kinds);
             kindRow.Children.Add(checkKind);
             kindRow.Children.Add(uncheckKind);
@@ -102,24 +101,24 @@ namespace WindowTilingManager.Controls
             check.SetBinding(ToggleButton.IsCheckedProperty, new Binding(nameof(ArrangeItem.IsChecked)) { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged });
             var view = new GridView();
             view.Columns.Add(new GridViewColumn { Header = "", Width = 34, CellTemplate = new DataTemplate { VisualTree = check } });
-            view.Columns.Add(new GridViewColumn { Header = "종류", Width = 70, DisplayMemberBinding = new Binding(nameof(ArrangeItem.Kind)) });
-            view.Columns.Add(new GridViewColumn { Header = "프로그램", Width = 140, DisplayMemberBinding = new Binding(nameof(ArrangeItem.Name)) });
-            view.Columns.Add(new GridViewColumn { Header = "창 제목 / 경로", Width = 470, DisplayMemberBinding = new Binding(nameof(ArrangeItem.Detail)) });
+            view.Columns.Add(new GridViewColumn { Header = Loc.T("Col.Kind"), Width = 70, DisplayMemberBinding = new Binding(nameof(ArrangeItem.Kind)) });
+            view.Columns.Add(new GridViewColumn { Header = Loc.T("Col.Program"), Width = 140, DisplayMemberBinding = new Binding(nameof(ArrangeItem.Name)) });
+            view.Columns.Add(new GridViewColumn { Header = Loc.T("Col.TitleOrPath"), Width = 470, DisplayMemberBinding = new Binding(nameof(ArrangeItem.Detail)) });
             _list = new ListView { View = view, ItemsSource = _items, SelectionMode = SelectionMode.Extended };
 
             // 버튼
-            var addExe = new Button { Content = "실행 파일 추가...", Padding = new Thickness(12, 4, 12, 4) };
+            var addExe = new Button { Content = Loc.T("Arrange.AddExe"), Padding = new Thickness(12, 4, 12, 4) };
             addExe.Click += (_, _) => AddExecutables();
-            var refresh = new Button { Content = "창 목록 새로 고침", Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(8, 0, 0, 0) };
+            var refresh = new Button { Content = Loc.T("Arrange.RefreshWindows"), Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(8, 0, 0, 0) };
             refresh.Click += (_, _) => LoadWindows();
-            var up = new Button { Content = "▲", ToolTip = "선택 항목 위로", Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(8, 0, 0, 0) };
+            var up = new Button { Content = "▲", ToolTip = Loc.T("Arrange.MoveUp"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(8, 0, 0, 0) };
             up.Click += (_, _) => MoveSelected(-1);
-            var down = new Button { Content = "▼", ToolTip = "선택 항목 아래로", Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(4, 0, 0, 0) };
+            var down = new Button { Content = "▼", ToolTip = Loc.T("Arrange.MoveDown"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(4, 0, 0, 0) };
             down.Click += (_, _) => MoveSelected(+1);
 
-            var ok = new Button { Content = "배치", MinWidth = 90, Padding = new Thickness(12, 4, 12, 4), IsDefault = true };
+            var ok = new Button { Content = Loc.T("Arrange.OK"), MinWidth = 90, Padding = new Thickness(12, 4, 12, 4), IsDefault = true };
             ok.Click += (_, _) => Accept();
-            var cancel = new Button { Content = "취소", MinWidth = 90, Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
+            var cancel = new Button { Content = Loc.T("Common.Cancel"), MinWidth = 90, Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
 
             var left = new StackPanel { Orientation = Orientation.Horizontal };
             left.Children.Add(addExe);
@@ -167,7 +166,7 @@ namespace WindowTilingManager.Controls
                 _items.Add(new ArrangeItem
                 {
                     IsChecked = checkedHandles.Contains(w.Handle),
-                    Kind = "실행 중",
+                    Kind = Loc.T("Arrange.KindRunning"),
                     Name = w.ProcessName,
                     Detail = w.Title,
                     Handle = w.Handle
@@ -212,15 +211,15 @@ namespace WindowTilingManager.Controls
             public KindEntry(string name, int count) { Name = name; Count = count; }
             public string Name { get; }
             public int Count { get; }
-            public override string ToString() => $"{Name}  ({Count}개)";
+            public override string ToString() => Loc.T("Arrange.KindEntry", Name, Count);
         }
 
         private void AddExecutables()
         {
             var dialog = new OpenFileDialog
             {
-                Title = "실행할 프로그램 선택 (여러 개 선택 가능)",
-                Filter = "프로그램 (*.exe;*.lnk;*.bat;*.cmd)|*.exe;*.lnk;*.bat;*.cmd|모든 파일 (*.*)|*.*",
+                Title = Loc.T("Arrange.PickExesTitle"),
+                Filter = Loc.T("Common.ExeFilter"),
                 Multiselect = true
             };
             if (dialog.ShowDialog(this) != true) return;
@@ -231,7 +230,7 @@ namespace WindowTilingManager.Controls
                 _items.Insert(insertAt++, new ArrangeItem
                 {
                     IsChecked = true,
-                    Kind = "새로 실행",
+                    Kind = Loc.T("Arrange.KindLaunch"),
                     Name = System.IO.Path.GetFileNameWithoutExtension(file),
                     Detail = file,
                     Path = file
@@ -255,7 +254,7 @@ namespace WindowTilingManager.Controls
             SelectedItems = _items.Where(i => i.IsChecked).ToList();
             if (SelectedItems.Count == 0)
             {
-                MessageBox.Show(this, "배치할 항목에 하나 이상 체크하세요.", Title, MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, Loc.T("Arrange.NothingChecked"), Title, MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             DialogResult = true;

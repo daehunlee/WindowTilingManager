@@ -108,8 +108,8 @@ namespace WindowTilingManager.Controls
             get
             {
                 var titled = GetLeaves().Where(l => l.HasWindow).ToList();
-                if (titled.Count == 0) return "빈 셀";
-                return titled.Count == 1 ? titled[0].DisplayTitle : $"{titled[0].DisplayTitle} 외 {titled.Count - 1}개";
+                if (titled.Count == 0) return Loc.T("Cell.Empty");
+                return titled.Count == 1 ? titled[0].DisplayTitle : Loc.T("Split.TitleAndMore", titled[0].DisplayTitle, titled.Count - 1);
             }
         }
 

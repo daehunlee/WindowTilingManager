@@ -19,9 +19,9 @@ namespace WindowTilingManager.Controls
 
             _text = new TextBox { Text = initial, Padding = new Thickness(4, 3, 4, 3), Margin = new Thickness(0, 6, 0, 12) };
 
-            var ok = new Button { Content = "확인", MinWidth = 80, Padding = new Thickness(10, 3, 10, 3), IsDefault = true };
+            var ok = new Button { Content = Loc.T("Common.OK"), MinWidth = 80, Padding = new Thickness(10, 3, 10, 3), IsDefault = true };
             ok.Click += (_, _) => DialogResult = true;
-            var cancel = new Button { Content = "취소", MinWidth = 80, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
+            var cancel = new Button { Content = Loc.T("Common.Cancel"), MinWidth = 80, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
 
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
             buttons.Children.Add(ok);

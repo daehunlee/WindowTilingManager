@@ -48,15 +48,15 @@ namespace WindowTilingManager.Controls
             }
 
             items.Add(new Separator());
-            AddItem(items, "새 세트", shell.AddSet);
-            AddItem(items, "현재 세트 이름 바꾸기...", () => shell.RenameSet(shell.CurrentSetIndex));
-            AddItem(items, "현재 세트 삭제...", () => shell.DeleteSet(shell.CurrentSetIndex), shell.Sets.Count > 1);
-            AddItem(items, "현재 세트 초기화...", () => shell.ResetSet(shell.CurrentSetIndex));
-            AddItem(items, "셀 여러 개 선택해서 닫기...", shell.CloseCellsInCurrentSet);
+            AddItem(items, Loc.T("Set.New"), shell.AddSet);
+            AddItem(items, Loc.T("Set.RenameCurrent"), () => shell.RenameSet(shell.CurrentSetIndex));
+            AddItem(items, Loc.T("Set.DeleteCurrent"), () => shell.DeleteSet(shell.CurrentSetIndex), shell.Sets.Count > 1);
+            AddItem(items, Loc.T("Set.ResetCurrent"), () => shell.ResetSet(shell.CurrentSetIndex));
+            AddItem(items, Loc.T("Cell.CloseMany"), shell.CloseCellsInCurrentSet);
             items.Add(new Separator());
             int current = shell.CurrentSetIndex;
-            AddItem(items, "실행 중인 이전 창 다시 붙이기", shell.ReattachPreviousWindows);
-            AddItem(items, "현재 세트의 이전 프로그램 모두 실행...", () =>
+            AddItem(items, Loc.T("Restore.Reattach"), shell.ReattachPreviousWindows);
+            AddItem(items, Loc.T("Set.RelaunchAll"), () =>
             {
                 if (current >= 0 && current < shell.Sets.Count)
                     _ = shell.RelaunchProgramsAsync(shell.Sets[current]);

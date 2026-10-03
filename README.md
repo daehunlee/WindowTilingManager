@@ -17,6 +17,7 @@
 - 여러 **세트**(작업 공간) 관리, 전체 화면(F11)과 화면 가장자리로 세트 전환
 - 셀 최대화, 셀 여러 개 선택해서 닫기, 세트 초기화
 - 레이아웃 자동 저장, 다시 시작하면 실행 중인 이전 창을 제자리로 다시 붙이기
+- 다국어: 한국어 · English · 日本語 · 中文 (언어 파일을 추가해 다른 언어도 지원)
 
 ## 메뉴
 
@@ -56,6 +57,14 @@ publish.bat                # release 폴더에 배포용 exe 와 zip 만들기
 3. GitHub Actions가 자동으로 빌드해서 Releases에 zip을 올립니다 (몇 분 걸림).
 
 자세한 사용법은 [사용법.md](사용법.md)를 참고하세요.
+
+## 언어 / Languages
+
+**보기 → 언어 (Language)** 에서 한국어, English, 日本語, 中文 중에 고를 수 있습니다.
+다른 언어는 `Languages/en.json`을 복사해 번역한 파일(예: `fr.json`)을 실행 파일 옆 `Languages` 폴더에 넣으면 추가됩니다. 자세한 방법은 [사용법.md](사용법.md#11-언어-다국어)를 참고하세요.
+
+Choose a display language in **View → Language** (Korean, English, Japanese, Chinese).
+To add another language, copy `Languages/en.json` to `<code>.json` (e.g. `fr.json`), translate the values, and put it in the `Languages` folder next to the executable.
 
 ## 라이선스
 

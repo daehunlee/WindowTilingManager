@@ -17,7 +17,7 @@ namespace WindowTilingManager.Controls
 
         public WindowPickerDialog()
         {
-            Title = "배정할 창 선택";
+            Title = Loc.T("Picker.Title");
             Width = 720;
             Height = 480;
             MinWidth = 400;
@@ -28,7 +28,7 @@ namespace WindowTilingManager.Controls
             // 검색 줄
             _filter = new TextBox { Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(4, 3, 4, 3) };
             _filter.TextChanged += (_, _) => ApplyFilter();
-            var filterLabel = new TextBlock { Text = "검색:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 8) };
+            var filterLabel = new TextBlock { Text = Loc.T("Common.Search"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 8) };
             var filterRow = new DockPanel();
             DockPanel.SetDock(filterLabel, Dock.Left);
             filterRow.Children.Add(filterLabel);
@@ -37,8 +37,8 @@ namespace WindowTilingManager.Controls
 
             // 목록
             var view = new GridView();
-            view.Columns.Add(new GridViewColumn { Header = "프로그램", Width = 150, DisplayMemberBinding = new Binding(nameof(WindowInfo.ProcessName)) });
-            view.Columns.Add(new GridViewColumn { Header = "창 제목", Width = 440, DisplayMemberBinding = new Binding(nameof(WindowInfo.Title)) });
+            view.Columns.Add(new GridViewColumn { Header = Loc.T("Col.Program"), Width = 150, DisplayMemberBinding = new Binding(nameof(WindowInfo.ProcessName)) });
+            view.Columns.Add(new GridViewColumn { Header = Loc.T("Col.WindowTitle"), Width = 440, DisplayMemberBinding = new Binding(nameof(WindowInfo.Title)) });
             view.Columns.Add(new GridViewColumn { Header = "PID", Width = 70, DisplayMemberBinding = new Binding(nameof(WindowInfo.ProcessId)) });
             _list = new ListView { View = view, SelectionMode = SelectionMode.Single };
             _list.MouseDoubleClick += (_, _) =>
@@ -47,11 +47,11 @@ namespace WindowTilingManager.Controls
             };
 
             // 버튼 줄
-            var refresh = new Button { Content = "새로 고침", Padding = new Thickness(12, 4, 12, 4), MinWidth = 90 };
+            var refresh = new Button { Content = Loc.T("Common.Refresh"), Padding = new Thickness(12, 4, 12, 4), MinWidth = 90 };
             refresh.Click += (_, _) => LoadWindows();
-            var ok = new Button { Content = "배정", Padding = new Thickness(12, 4, 12, 4), MinWidth = 90, Margin = new Thickness(8, 0, 0, 0), IsDefault = true };
+            var ok = new Button { Content = Loc.T("Picker.Assign"), Padding = new Thickness(12, 4, 12, 4), MinWidth = 90, Margin = new Thickness(8, 0, 0, 0), IsDefault = true };
             ok.Click += (_, _) => Accept();
-            var cancel = new Button { Content = "취소", Padding = new Thickness(12, 4, 12, 4), MinWidth = 90, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
+            var cancel = new Button { Content = Loc.T("Common.Cancel"), Padding = new Thickness(12, 4, 12, 4), MinWidth = 90, Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
 
             var rightButtons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
             rightButtons.Children.Add(ok);

@@ -36,7 +36,7 @@ namespace WindowTilingManager.Controls
 
         public CloseCellsDialog(Workspace set)
         {
-            Title = $"셀 여러 개 닫기 - {set.Title}";
+            Title = Loc.T("CloseCells.Title", set.Title);
             Width = 780;
             Height = 520;
             MinWidth = 500;
@@ -51,7 +51,7 @@ namespace WindowTilingManager.Controls
                 {
                     Number = n++,
                     Location = DescribeLocation(cell),
-                    Title = cell.HasWindow ? cell.DisplayTitle : (cell.RestorePending ? "(복원 대기 중) " + cell.SavedTitle : "(빈 셀)"),
+                    Title = cell.HasWindow ? cell.DisplayTitle : (cell.RestorePending ? Loc.T("CloseCells.Pending", cell.SavedTitle) : Loc.T("CloseCells.EmptyCell")),
                     Program = string.IsNullOrEmpty(cell.ProgramPath) ? "" : Path.GetFileNameWithoutExtension(cell.ProgramPath),
                     Cell = cell
                 });
@@ -59,18 +59,17 @@ namespace WindowTilingManager.Controls
 
             var hint = new TextBlock
             {
-                Text = "닫을 셀에 체크하세요. 목록에서 줄을 클릭하면 해당 셀의 테두리가 파랗게 표시됩니다. " +
-                       "세트의 셀을 모두 닫으면 빈 셀 하나만 남습니다.",
+                Text = Loc.T("CloseCells.Hint"),
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 8)
             };
 
             // 빠른 선택 버튼
             var quick = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-            quick.Children.Add(QuickButton("모두 체크", _ => true));
-            quick.Children.Add(QuickButton("빈 셀만 체크", e => !e.Cell.HasWindow));
-            quick.Children.Add(QuickButton("창이 있는 셀만 체크", e => e.Cell.HasWindow));
-            quick.Children.Add(QuickButton("모두 해제", _ => false));
+            quick.Children.Add(QuickButton(Loc.T("Common.CheckAll"), _ => true));
+            quick.Children.Add(QuickButton(Loc.T("CloseCells.CheckEmpty"), e => !e.Cell.HasWindow));
+            quick.Children.Add(QuickButton(Loc.T("CloseCells.CheckWithWindow"), e => e.Cell.HasWindow));
+            quick.Children.Add(QuickButton(Loc.T("Common.UncheckAll"), _ => false));
 
             var top = new StackPanel();
             top.Children.Add(hint);
@@ -84,30 +83,30 @@ namespace WindowTilingManager.Controls
             var view = new GridView();
             view.Columns.Add(new GridViewColumn { Header = "", Width = 34, CellTemplate = new DataTemplate { VisualTree = check } });
             view.Columns.Add(new GridViewColumn { Header = "#", Width = 36, DisplayMemberBinding = new Binding(nameof(CellEntry.Number)) });
-            view.Columns.Add(new GridViewColumn { Header = "위치", Width = 200, DisplayMemberBinding = new Binding(nameof(CellEntry.Location)) });
-            view.Columns.Add(new GridViewColumn { Header = "창 제목", Width = 340, DisplayMemberBinding = new Binding(nameof(CellEntry.Title)) });
-            view.Columns.Add(new GridViewColumn { Header = "프로그램", Width = 130, DisplayMemberBinding = new Binding(nameof(CellEntry.Program)) });
+            view.Columns.Add(new GridViewColumn { Header = Loc.T("Col.Location"), Width = 200, DisplayMemberBinding = new Binding(nameof(CellEntry.Location)) });
+            view.Columns.Add(new GridViewColumn { Header = Loc.T("Col.WindowTitle"), Width = 340, DisplayMemberBinding = new Binding(nameof(CellEntry.Title)) });
+            view.Columns.Add(new GridViewColumn { Header = Loc.T("Col.Program"), Width = 130, DisplayMemberBinding = new Binding(nameof(CellEntry.Program)) });
             _list = new ListView { View = view, ItemsSource = _entries, SelectionMode = SelectionMode.Single };
             _list.SelectionChanged += (_, _) => Highlight((_list.SelectedItem as CellEntry)?.Cell);
 
             // 창 처리 방법
             _releaseWindows = new RadioButton
             {
-                Content = "셀의 창은 바탕화면으로 되돌리기 (프로그램은 계속 실행)",
+                Content = Loc.T("CloseCells.ReleaseWindows"),
                 IsChecked = true,
                 GroupName = "windows",
                 Margin = new Thickness(0, 0, 0, 4)
             };
             _closePrograms = new RadioButton
             {
-                Content = "셀의 창도 닫기 (각 프로그램에 닫기 요청, 저장 안 한 내용은 프로그램이 물어봄)",
+                Content = Loc.T("CloseCells.ClosePrograms"),
                 GroupName = "windows"
             };
             _releaseWindows.Checked += (_, _) => UpdateOkButton();
             _closePrograms.Checked += (_, _) => UpdateOkButton();
             var windowsBox = new GroupBox
             {
-                Header = "창이 들어 있는 셀은",
+                Header = Loc.T("CloseCells.WindowsGroup"),
                 Margin = new Thickness(0, 8, 0, 0),
                 Padding = new Thickness(8, 6, 8, 6),
                 Content = new StackPanel { Children = { _releaseWindows, _closePrograms } }
@@ -116,7 +115,7 @@ namespace WindowTilingManager.Controls
             // 확인/취소
             _ok = new Button { MinWidth = 150, Padding = new Thickness(12, 4, 12, 4), IsDefault = true };
             _ok.Click += (_, _) => Accept();
-            var cancel = new Button { Content = "취소", MinWidth = 90, Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
+            var cancel = new Button { Content = Loc.T("Common.Cancel"), MinWidth = 90, Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
             buttons.Children.Add(_ok);
             buttons.Children.Add(cancel);
@@ -163,7 +162,7 @@ namespace WindowTilingManager.Controls
         {
             int count = _entries.Count(e => e.IsChecked);
             if (_ok == null) return;
-            _ok.Content = count == 0 ? "선택한 셀 닫기" : $"선택한 셀 {count}개 닫기";
+            _ok.Content = count == 0 ? Loc.T("CloseCells.OKNone") : Loc.T("CloseCells.OKCount", count);
             _ok.IsEnabled = count > 0;
         }
 
@@ -185,7 +184,7 @@ namespace WindowTilingManager.Controls
             if (ClosePrograms && withWindow > 0)
             {
                 var answer = MessageBox.Show(this,
-                    $"창이 들어 있는 셀 {withWindow}개의 프로그램에 닫기 요청을 보냅니다. 계속할까요?",
+                    Loc.T("CloseCells.ConfirmClosePrograms", withWindow),
                     Title, MessageBoxButton.OKCancel, MessageBoxImage.Warning);
                 if (answer != MessageBoxResult.OK) return;
             }
@@ -205,21 +204,21 @@ namespace WindowTilingManager.Controls
                     case SplitNode split:
                         bool first = ReferenceEquals(split.First, node);
                         parts.Add(split.Direction == SplitDirection.LeftRight
-                            ? (first ? "왼쪽" : "오른쪽")
-                            : (first ? "위" : "아래"));
+                            ? (first ? Loc.T("Location.Left") : Loc.T("Location.Right"))
+                            : (first ? Loc.T("Location.Top") : Loc.T("Location.Bottom")));
                         break;
                     case TabsNode tabs:
                         int index = -1;
                         for (int i = 0; i < tabs.Tabs.Count; i++)
                             if (ReferenceEquals(tabs.Tabs[i], node)) index = i;
-                        parts.Add(index >= 0 ? $"탭 {index + 1}" : "탭");
+                        parts.Add(index >= 0 ? Loc.T("Location.TabN", index + 1) : Loc.T("Tabs.Tab"));
                         break;
                 }
                 node = container;
                 parent = node.ParentContainer;
             }
             parts.Reverse();
-            return parts.Count == 0 ? "전체" : string.Join(" › ", parts);
+            return parts.Count == 0 ? Loc.T("Location.Whole") : string.Join(" › ", parts);
         }
     }
 }

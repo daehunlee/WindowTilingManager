@@ -63,9 +63,9 @@ namespace WindowTilingManager.Controls
         private string? Attach()
         {
             if (!IsWindow(_target))
-                return "선택한 창이 이미 닫혔습니다.";
+                return Loc.T("Error.WindowClosed");
             if (_owner == IntPtr.Zero)
-                return "메인 창이 아직 준비되지 않았습니다.";
+                return Loc.T("Error.MainNotReady");
 
             _wasMaximized = IsZoomed(_target);
             if (IsIconic(_target) || _wasMaximized)
@@ -93,14 +93,37 @@ namespace WindowTilingManager.Controls
                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
                 if (_wasMaximized) ShowWindow(_target, SW_MAXIMIZE);
 
-                return "이 창은 가져올 수 없습니다 (액세스 거부).\n관리자 권한으로 실행된 프로그램이라면 Window Tiling Manager 도 관리자 권한으로 실행해야 합니다.";
+                return Loc.T("Error.AccessDenied");
             }
 
-            SetWindowPos(_target, IntPtr.Zero, 0, 0, 0, 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+            // 소유 관계를 나중에 바꾼 창은 Windows 가 Z 순서를 바로 정리해 주지 않아서
+            // 메인 창 뒤에 가려진 채로 남을 수 있음 (예: 시작할 때 복원한 창).
+            // 그래서 메인 창이 활성 상태이면 붙인 창을 맨 앞으로 올림 (포커스는 가져가지 않음).
+            uint flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE;
+            if (!IsOwnerActive()) flags |= SWP_NOZORDER;
+            SetWindowPos(_target, HWND_TOP, 0, 0, 0, 0, flags);
 
             _attached = true;
             return null;
+        }
+
+        private static readonly IntPtr HWND_TOP = IntPtr.Zero;
+
+        /// <summary>메인 창 또는 메인 창이 소유한 창(붙어 있는 창)이 활성 상태인지.</summary>
+        private bool IsOwnerActive()
+        {
+            IntPtr fg = GetForegroundWindow();
+            return fg != IntPtr.Zero && (fg == _owner || GetAncestor(fg, GA_ROOTOWNER) == _owner);
+        }
+
+        /// <summary>
+        /// 보이는 상태의 붙은 창을 맨 앞(메인 창 위)으로 올립니다. 포커스는 가져가지 않습니다.
+        /// 메인 창이 활성 상태일 때만 동작하므로, 다른 프로그램을 쓰는 중에 갑자기 튀어나오지 않습니다.
+        /// </summary>
+        public void BringToFront()
+        {
+            if (!_attached || IsBeingDragged || _shown != true || !IsWindow(_target) || !IsOwnerActive()) return;
+            SetWindowPos(_target, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
         }
 
         /// <summary>
@@ -142,7 +165,12 @@ namespace WindowTilingManager.Controls
             if (!moved && !needShow) return;
 
             uint flags = SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS;
-            if (needShow) flags |= SWP_SHOWWINDOW;
+            if (needShow)
+            {
+                flags |= SWP_SHOWWINDOW;
+                // 다시 보이게 할 때 메인 창 뒤에 숨지 않도록 맨 앞으로 (메인 창이 활성일 때만)
+                if (IsOwnerActive()) flags &= ~SWP_NOZORDER;
+            }
             SetWindowPos(_target, IntPtr.Zero, want.Left, want.Top, want.Width, want.Height, flags);
 
             _shown = true;

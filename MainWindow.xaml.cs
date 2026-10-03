@@ -56,10 +56,14 @@ namespace WindowTilingManager
 
         public MainWindow()
         {
+            // 언어는 화면을 만들기 전에 정함 (저장된 설정 → Windows 표시 언어 → 영어)
+            var layoutFile = LayoutStore.Load();
+            Loc.Initialize(layoutFile?.Settings.Language);
+
             InitializeComponent();
             AppShell.Current = this;
 
-            var settings = LoadLayout();
+            var settings = LoadLayout(layoutFile);
             RestoreOnStartupMenuItem.IsChecked = settings.RestoreWindowsOnStartup;
             EdgeSwitchMenuItem.IsChecked = settings.EdgeSwitchInFullscreen;
             DragToCellMenuItem.IsChecked = settings.DragToCell;
@@ -90,13 +94,105 @@ namespace WindowTilingManager
             _edgeTimer.Start();
 
             // 창이 화면에 나타난 뒤 이전에 배정했던 창을 복원
-            ContentRendered += (_, _) => RestoreWindowsOnStartup();
+            ContentRendered += (_, _) =>
+            {
+                RestoreWindowsOnStartup();
+                BringEmbeddedWindowsToFront();
+            };
+
+            // 메인 창이 활성화될 때(클릭, Alt+Tab 등) 붙은 창들이 메인 창 뒤에 가려지지 않도록 앞으로
+            Activated += (_, _) => BringEmbeddedWindowsToFront();
 
             LayoutUpdated += (_, _) => SyncEmbeddedWindows();
             LocationChanged += (_, _) => SyncEmbeddedWindows();
             StateChanged += (_, _) => SyncEmbeddedWindows();
 
             UpdateStatus();
+
+            ApplyLanguage();
+            Loc.LanguageChanged += (_, _) => ApplyLanguage();
+        }
+
+        // ═════════════════════════ 언어 ═════════════════════════
+
+        /// <summary>메뉴와 화면의 글자를 현재 언어로 다시 채웁니다.</summary>
+        private void ApplyLanguage()
+        {
+            FileMenu.Header = Loc.T("Main.File");
+            SaveLayoutMenuItem.Header = Loc.T("Main.SaveLayout");
+            RestoreOnStartupMenuItem.Header = Loc.T("Main.RestoreOnStartup");
+            RestoreOnStartupMenuItem.ToolTip = Loc.T("Main.RestoreOnStartupTip");
+            ReattachMenuItem.Header = Loc.T("Restore.Reattach");
+            ReattachMenuItem.ToolTip = Loc.T("Main.ReattachTip");
+            ReleaseAllMenuItem.Header = Loc.T("Main.ReleaseAll");
+            ReleaseAllMenuItem.ToolTip = Loc.T("Main.ReleaseAllTip");
+            CloseCellsMenuItem.Header = Loc.T("Cell.CloseMany");
+            CloseCellsMenuItem.ToolTip = Loc.T("Main.CloseCellsTip");
+            ResetSetMenuItem.Header = Loc.T("Set.ResetCurrent");
+            ResetSetMenuItem.ToolTip = Loc.T("Main.ResetSetTip");
+            ExitMenuItem.Header = Loc.T("Main.Exit");
+
+            SetMenu.Header = Loc.T("Main.Sets");
+
+            ViewMenu.Header = Loc.T("Main.View");
+            FullscreenMenuItem.Header = Loc.T("Menu.Fullscreen");
+            EdgeSwitchMenuItem.Header = Loc.T("Main.EdgeSwitch");
+            TopmostMenuItem.Header = Loc.T("Main.Topmost");
+            DragToCellMenuItem.Header = Loc.T("Main.DragToCell");
+            LanguageMenu.Header = Loc.T("Main.Language");
+
+            HelpMenu.Header = Loc.T("Main.Help");
+            HelpMenuItem.Header = Loc.T("Help.Title");
+
+            RefreshSetBar();
+            foreach (var cell in AllCells().ToList()) cell.RefreshTexts();
+            UpdateStatus();
+        }
+
+        private void LanguageMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+        {
+            if (!ReferenceEquals(e.OriginalSource, LanguageMenu)) return;
+            LanguageMenu.Items.Clear();
+
+            foreach (var lang in Loc.Available)
+            {
+                string code = lang.Code;
+                var item = new MenuItem
+                {
+                    Header = new TextBlock { Text = $"{lang.Name} ({lang.Code})" },
+                    IsChecked = string.Equals(code, Loc.CurrentCode, StringComparison.OrdinalIgnoreCase),
+                    ToolTip = lang.Source == "built-in" ? Loc.T("Lang.BuiltIn") : lang.Source
+                };
+                item.Click += (_, _) =>
+                {
+                    Loc.SetLanguage(code);
+                    TrySaveLayout(showError: false);
+                };
+                LanguageMenu.Items.Add(item);
+            }
+
+            LanguageMenu.Items.Add(new Separator());
+            var openFolder = new MenuItem { Header = Loc.T("Lang.OpenFolder"), ToolTip = Loc.T("Lang.OpenFolderTip") };
+            openFolder.Click += (_, _) => OpenLanguagesFolder();
+            LanguageMenu.Items.Add(openFolder);
+
+            var reload = new MenuItem { Header = Loc.T("Lang.Reload") };
+            reload.Click += (_, _) => Loc.Reload();
+            LanguageMenu.Items.Add(reload);
+        }
+
+        private void OpenLanguagesFolder()
+        {
+            try
+            {
+                string folder = Loc.EnsureLanguagesFolder();
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, Loc.T("Lang.OpenFolderFailed", ex.Message), "Window Tiling Manager",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         /// <summary>모든 세트의 모든 셀.</summary>
@@ -109,6 +205,16 @@ namespace WindowTilingManager
             if (_hwnd == IntPtr.Zero || WindowState == WindowState.Minimized) return;
             bool ownerVisible = IsVisible;
             foreach (var cell in AllCells()) cell.SyncWindow(ownerVisible);
+        }
+
+        /// <summary>현재 세트에서 보이는 셀의 붙은 창들을 메인 창 위로 올립니다.</summary>
+        private void BringEmbeddedWindowsToFront()
+        {
+            if (_hwnd == IntPtr.Zero || WindowState == WindowState.Minimized) return;
+            SyncEmbeddedWindows();
+            var set = CurrentSet;
+            if (set == null) return;
+            foreach (var cell in set.Leaves) cell.BringWindowToFront();
         }
 
         /// <summary>창 핸들로 그 창이 붙어 있는 셀을 찾습니다.</summary>
@@ -165,21 +271,20 @@ namespace WindowTilingManager
             foreach (var set in _sets) set.ReleaseAll();
         }
 
-        private SettingsModel LoadLayout()
+        private SettingsModel LoadLayout(LayoutFileModel? file)
         {
-            var file = LayoutStore.Load();
             if (file != null)
             {
                 foreach (var model in file.Sets)
                 {
-                    var set = CreateSet(string.IsNullOrWhiteSpace(model.Name) ? $"세트 {_sets.Count + 1}" : model.Name);
+                    var set = CreateSet(string.IsNullOrWhiteSpace(model.Name) ? Loc.T("Set.DefaultName", _sets.Count + 1) : model.Name);
                     set.Root.Load(LayoutStore.FromModel(model.Root));
                 }
                 SwitchToSet(Math.Clamp(file.ActiveSet, 0, _sets.Count - 1));
             }
             else
             {
-                CreateSet("세트 1");
+                CreateSet(Loc.T("Set.DefaultName", 1));
                 SwitchToSet(0);
             }
             return file?.Settings ?? new SettingsModel();
@@ -189,7 +294,8 @@ namespace WindowTilingManager
         {
             RestoreWindowsOnStartup = RestoreOnStartupMenuItem.IsChecked,
             EdgeSwitchInFullscreen = EdgeSwitchMenuItem.IsChecked,
-            DragToCell = DragToCellMenuItem.IsChecked
+            DragToCell = DragToCellMenuItem.IsChecked,
+            Language = Loc.CurrentCode
         };
 
         /// <summary>
@@ -205,8 +311,8 @@ namespace WindowTilingManager
 
             var (attached, remaining) = ReattachPreviousWindowsCore();
             SetStatusNotice(remaining == 0
-                ? $"이전 창 {attached}개를 다시 붙였습니다."
-                : $"이전 창 {attached}개를 다시 붙였습니다 · {remaining}개는 실행 중이 아니라 비워 두었습니다 (프로그램을 띄운 뒤 파일 → 실행 중인 이전 창 다시 붙이기)", 15);
+                ? Loc.T("Restore.StatusAll", attached)
+                : Loc.T("Restore.StatusPartial", attached, remaining), 15);
         }
 
         /// <summary>메뉴에서 직접 실행: 복원 대기 중인 셀에 실행 중인 같은 프로그램 창을 다시 붙입니다.</summary>
@@ -214,15 +320,15 @@ namespace WindowTilingManager
         {
             if (!AllCells().Any(c => c.RestorePending))
             {
-                MessageBox.Show(this, "다시 붙일 이전 창이 없습니다.\n(지난번 종료할 때 창이 있었는데 아직 비어 있는 셀이 없습니다)",
+                MessageBox.Show(this, Loc.T("Restore.NothingPending"),
                     "Window Tiling Manager", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var (attached, remaining) = ReattachPreviousWindowsCore();
-            string message = $"{attached}개 창을 다시 붙였습니다.";
+            string message = Loc.T("Restore.Attached", attached);
             if (remaining > 0)
-                message += $"\n{remaining}개 셀은 같은 프로그램 창이 실행 중이 아니어서 비워 두었습니다.";
+                message += "\n" + Loc.T("Restore.Remaining", remaining);
             MessageBox.Show(this, message, "Window Tiling Manager", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -288,7 +394,7 @@ namespace WindowTilingManager
             catch (Exception ex)
             {
                 if (showError)
-                    MessageBox.Show(this, "레이아웃을 저장하지 못했습니다.\n" + ex.Message, "저장 실패",
+                    MessageBox.Show(this, Loc.T("Save.Failed", ex.Message), Loc.T("Save.FailedTitle"),
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -380,15 +486,15 @@ namespace WindowTilingManager
         public void AddSet()
         {
             int n = _sets.Count + 1;
-            while (_sets.Any(s => s.Title == $"세트 {n}")) n++;
-            CreateSet($"세트 {n}");
+            while (_sets.Any(s => s.Title == Loc.T("Set.DefaultName", n))) n++;
+            CreateSet(Loc.T("Set.DefaultName", n));
             SwitchToSet(_sets.Count - 1);
         }
 
         public void RenameSet(int index)
         {
             if (index < 0 || index >= _sets.Count) return;
-            var dialog = new InputDialog("세트 이름 바꾸기", "새 이름:", _sets[index].Title) { Owner = this };
+            var dialog = new InputDialog(Loc.T("Set.RenameTitle"), Loc.T("Set.RenamePrompt"), _sets[index].Title) { Owner = this };
             if (dialog.ShowDialog() == true && dialog.Value.Length > 0)
             {
                 _sets[index].Title = dialog.Value;
@@ -401,8 +507,8 @@ namespace WindowTilingManager
             if (index < 0 || index >= _sets.Count || _sets.Count <= 1) return;
             var set = _sets[index];
             var answer = MessageBox.Show(this,
-                $"'{set.Title}' 세트를 삭제할까요?\n이 세트에 배정된 창은 바탕화면으로 돌아갑니다.",
-                "세트 삭제", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+                Loc.T("Set.DeleteConfirm", set.Title),
+                Loc.T("Set.DeleteTitle"), MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (answer != MessageBoxResult.OK) return;
 
             set.ReleaseAll();
@@ -417,7 +523,7 @@ namespace WindowTilingManager
             var cells = set.Leaves.Where(c => !c.HasWindow && !string.IsNullOrEmpty(c.ProgramPath)).ToList();
             if (cells.Count == 0)
             {
-                MessageBox.Show(this, "다시 실행할 프로그램이 저장된 빈 셀이 없습니다.", "Window Tiling Manager",
+                MessageBox.Show(this, Loc.T("Relaunch.Nothing"), "Window Tiling Manager",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -425,8 +531,8 @@ namespace WindowTilingManager
             // 실행하기 전에 무엇을 실행할지 반드시 확인
             string list = string.Join("\n", cells.Select(c => "  - " + c.ProgramPath));
             var answer = MessageBox.Show(this,
-                $"다음 프로그램 {cells.Count}개를 새로 실행해서 빈 셀에 배치합니다. 계속할까요?\n\n{list}",
-                "이전 프로그램 다시 실행", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+                Loc.T("Relaunch.Confirm", cells.Count, list),
+                Loc.T("Relaunch.Title"), MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (answer != MessageBoxResult.OK) return;
 
             int failed = 0;
@@ -436,7 +542,7 @@ namespace WindowTilingManager
             }
 
             if (failed > 0)
-                MessageBox.Show(this, $"{failed}개 셀은 프로그램 창을 찾지 못했습니다.\n해당 셀에 창을 직접 배정하세요.",
+                MessageBox.Show(this, Loc.T("Relaunch.Failed", failed),
                     "Window Tiling Manager", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -449,7 +555,7 @@ namespace WindowTilingManager
                 var button = new Button
                 {
                     Content = new TextBlock { Text = _sets[i].Title },
-                    ToolTip = (i < 9 ? $"Ctrl+Alt+{i + 1}\n" : "") + "더블클릭: 이름 바꾸기 · 오른쪽 클릭: 세트 메뉴",
+                    ToolTip = (i < 9 ? $"Ctrl+Alt+{i + 1}\n" : "") + Loc.T("SetBar.Hint"),
                     Padding = new Thickness(14, 3, 14, 3),
                     Margin = new Thickness(0, 0, 1, 0),
                     BorderThickness = new Thickness(0),
@@ -476,7 +582,7 @@ namespace WindowTilingManager
             var add = new Button
             {
                 Content = "＋",
-                ToolTip = "새 세트",
+                ToolTip = Loc.T("Set.NewTooltip"),
                 Padding = new Thickness(10, 3, 10, 3),
                 BorderThickness = new Thickness(0),
                 Foreground = System.Windows.Media.Brushes.White,
@@ -774,20 +880,19 @@ namespace WindowTilingManager
             if (set == null) return;
             var leaves = set.Leaves.ToList();
             int withWindow = leaves.Count(l => l.HasWindow);
-            string zoom = set.IsZoomed ? " · 셀 최대화 중" : "";
+            string zoom = set.IsZoomed ? Loc.T("Status.Zoomed") : "";
             if (_statusNotice != null && DateTime.UtcNow < _statusNoticeUntil)
             {
-                StatusText.Text = $"{set.Title}: 셀 {leaves.Count}개 · 창 {withWindow}개{zoom}   |   {_statusNotice}";
+                StatusText.Text = Loc.T("Status.Summary", set.Title, leaves.Count, withWindow) + zoom + "   |   " + _statusNotice;
                 return;
             }
-            StatusText.Text = $"{set.Title}: 셀 {leaves.Count}개 · 창 {withWindow}개{zoom}   |   " +
-                              "메뉴: 빈 셀·테두리 오른쪽 클릭 또는 Ctrl+오른쪽 클릭 · F11 전체 화면 · 창 제목 표시줄을 끌어 셀에 놓기";
+            StatusText.Text = Loc.T("Status.Summary", set.Title, leaves.Count, withWindow) + zoom + "   |   " + Loc.T("Status.Hint");
         }
 
         private void SaveLayout_Click(object sender, RoutedEventArgs e)
         {
             if (TrySaveLayout(showError: true))
-                MessageBox.Show(this, "레이아웃을 저장했습니다.\n" + LayoutStore.FilePath, "저장",
+                MessageBox.Show(this, Loc.T("Save.Done", LayoutStore.FilePath), Loc.T("Save.Title"),
                     MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -811,11 +916,11 @@ namespace WindowTilingManager
             int windows = cells.Count(c => c.HasWindow);
 
             string detail = windows > 0
-                ? $"\n\n들어 있는 창 {windows}개는 바탕화면으로 돌아갑니다 (프로그램은 닫지 않습니다).\n창까지 닫으려면 '셀 여러 개 선택해서 닫기'에서 '셀의 창도 닫기'를 고르세요."
+                ? "\n\n" + Loc.T("Reset.WindowsDetail", windows)
                 : "";
             var answer = MessageBox.Show(this,
-                $"'{set.Title}' 세트를 초기화할까요?\n셀 {cells.Count}개, 나눈 모양, 탭, 이전 프로그램 기록이 모두 지워지고 빈 셀 하나만 남습니다.{detail}",
-                "세트 초기화", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+                Loc.T("Reset.Confirm", set.Title, cells.Count) + detail,
+                Loc.T("Reset.Title"), MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (answer != MessageBoxResult.OK) return;
 
             set.Reset();
@@ -850,26 +955,7 @@ namespace WindowTilingManager
 
         private void Help_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(this,
-                "■ 메뉴 열기\n" +
-                "   - 빈 셀: 아무 곳이나 오른쪽 클릭\n" +
-                "   - 창이 있는 셀: 셀 테두리를 오른쪽 클릭, 또는 셀 안에서 Ctrl+오른쪽 클릭\n\n" +
-                "■ 창 넣기\n" +
-                "   - 다른 창의 제목 표시줄을 끌어 원하는 셀 위에 놓기\n" +
-                "   - 메뉴 → 실행 중인 창 배정 / 프로그램 실행\n" +
-                "   - 실행 파일을 빈 셀에 끌어다 놓기\n\n" +
-                "■ 나누기/탭 추가\n" +
-                "   메뉴 항목을 Ctrl 을 누른 채 클릭하면 칸 수(탭 개수)를 입력할 수 있습니다.\n" +
-                "   여러 프로그램 한꺼번에 배치: 여러 창/프로그램을 탭·좌우·상하로 한 번에 배치\n\n" +
-                "■ 단축키 (이 창이 활성 상태일 때)\n" +
-                "   F11 전체 화면 · Ctrl+Alt+1~9 세트 전환 · Ctrl+Alt+Z 셀 최대화\n" +
-                "   전체 화면에서 마우스를 화면 왼쪽/오른쪽 끝에 잠깐 두면 이전/다음 세트\n\n" +
-                "■ 세트\n" +
-                "   위쪽 세트 줄 또는 메뉴 → 세트에서 전환·추가·이름 바꾸기·삭제\n" +
-                "   레이아웃과 배정 정보는 자동 저장됩니다. 다시 시작하면 '이미 실행 중인' 같은 프로그램 창만\n" +
-                "   제자리에 다시 붙입니다 (프로그램을 새로 실행하지는 않습니다).\n\n" +
-                "자세한 내용은 폴더의 '사용법.md'를 참고하세요.",
-                "사용법", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, Loc.T("Help.Text"), Loc.T("Help.Title"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }
