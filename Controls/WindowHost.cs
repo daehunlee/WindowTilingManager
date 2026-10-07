@@ -126,6 +126,26 @@ namespace WindowTilingManager.Controls
             SetWindowPos(_target, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
         }
 
+        // ── 위치 맞추기 상태 ─────────────────────────
+        // 프로그램마다 최소 크기가 있거나(브라우저 등) 글자 칸 단위로만 크기가 바뀌어서(콘솔/서버 창)
+        // 요청한 크기를 정확히 받아들이지 못하는 경우가 있음. 이때 같은 크기를 계속 다시 요청하면
+        // 창이 끊임없이 다시 그려지고(깜빡임, 콘솔 줄바꿈 반복) 레이아웃이 흐트러지므로,
+        // 한 번 요청한 위치는 프로그램이 조정한 결과를 받아들이고 위치가 바뀐 경우에만 다시 맞춤.
+        private RECT _requested;
+        private bool _hasRequest;
+        private long _requestedAt;
+        private bool _clipped;
+        private RECT _clipRect;
+
+        private static bool Same(RECT a, RECT b) =>
+            a.Left == b.Left && a.Top == b.Top && a.Right == b.Right && a.Bottom == b.Bottom;
+
+        /// <summary>
+        /// 다음 Sync 때 위치를 무조건 다시 맞추게 합니다.
+        /// (메인 창 최대화/복원처럼 전체 배치가 크게 바뀐 직후에 사용)
+        /// </summary>
+        public void ForceResync() => _hasRequest = false;
+
         /// <summary>
         /// 셀의 화면 위치(픽셀)에 창을 맞추고 표시 여부를 적용합니다.
         /// 바뀐 것이 없으면 아무것도 하지 않으므로 자주 호출해도 됩니다.
@@ -144,9 +164,9 @@ namespace WindowTilingManager.Controls
                 return;
             }
 
-            // 프로그램이 스스로 최소화/최대화했으면 되돌림
-            if (IsIconic(_target)) ShowWindow(_target, SW_SHOWNOACTIVATE);
-            else if (IsZoomed(_target)) ShowWindow(_target, SW_RESTORE);
+            // 프로그램이 스스로 최소화/최대화했으면 되돌림 (Win+↑ 등)
+            if (IsIconic(_target)) { ShowWindow(_target, SW_SHOWNOACTIVATE); _hasRequest = false; }
+            else if (IsZoomed(_target)) { ShowWindow(_target, SW_RESTORE); _hasRequest = false; }
 
             // 보이지 않는 테두리만큼 바깥으로 늘려서, 보이는 영역이 셀에 딱 맞게 함
             RECT b = GetInvisibleBorder(_target);
@@ -159,10 +179,32 @@ namespace WindowTilingManager.Controls
             };
 
             GetWindowRect(_target, out RECT now);
-            bool moved = now.Left != want.Left || now.Top != want.Top || now.Right != want.Right || now.Bottom != want.Bottom;
             bool needShow = _shown != true || !IsWindowVisible(_target);
 
-            if (!moved && !needShow) return;
+            if (!needShow)
+            {
+                if (Same(now, want))
+                {
+                    // 정확히 맞음
+                    _requested = want;
+                    _hasRequest = true;
+                    UpdateClip(now, x, y, width, height);
+                    return;
+                }
+
+                if (_hasRequest && Same(_requested, want))
+                {
+                    // 이미 같은 위치를 요청했음: 적용 중이면 기다리고,
+                    // 왼쪽 위 모서리가 제자리면 프로그램이 정한 크기를 그대로 받아들임 (다시 요청하지 않음)
+                    if (Environment.TickCount64 - _requestedAt < 300) return;
+                    if (now.Left == want.Left && now.Top == want.Top)
+                    {
+                        UpdateClip(now, x, y, width, height);
+                        return;
+                    }
+                    // 누군가 창을 옮김 → 아래에서 다시 맞춤
+                }
+            }
 
             uint flags = SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS;
             if (needShow)
@@ -173,7 +215,54 @@ namespace WindowTilingManager.Controls
             }
             SetWindowPos(_target, IntPtr.Zero, want.Left, want.Top, want.Width, want.Height, flags);
 
+            _requested = want;
+            _hasRequest = true;
+            _requestedAt = Environment.TickCount64;
             _shown = true;
+        }
+
+        /// <summary>
+        /// 프로그램의 최소 크기 때문에 창이 셀보다 크면, 셀 밖으로 넘치는 부분이 옆 셀이나
+        /// 타일 매니저 바깥을 덮지 않도록 셀 영역만 보이게 자릅니다. 셀 안에 들어가면 자르기를 풉니다.
+        /// </summary>
+        private void UpdateClip(RECT now, int x, int y, int width, int height)
+        {
+            // 보이지 않는 테두리(보통 8픽셀 이하)보다 더 넘치면 '셀보다 큼'으로 봄
+            const int border = 10;
+            bool overflow = now.Left < x - border || now.Top < y - border
+                            || now.Right > x + width + border || now.Bottom > y + height + border;
+
+            if (!overflow)
+            {
+                if (_clipped)
+                {
+                    SetWindowRgn(_target, IntPtr.Zero, true);
+                    _clipped = false;
+                }
+                return;
+            }
+
+            // 창 좌표(창 왼쪽 위 = 0,0) 기준으로 셀 영역
+            var clip = new RECT
+            {
+                Left = Math.Max(0, x - now.Left),
+                Top = Math.Max(0, y - now.Top),
+                Right = Math.Max(0, x - now.Left) + width,
+                Bottom = Math.Max(0, y - now.Top) + height
+            };
+            if (_clipped && Same(clip, _clipRect)) return;
+
+            IntPtr region = CreateRectRgn(clip.Left, clip.Top, clip.Right, clip.Bottom);
+            if (region == IntPtr.Zero) return;
+            if (SetWindowRgn(_target, region, true) != 0)
+            {
+                _clipped = true;      // 성공하면 영역은 시스템이 관리
+                _clipRect = clip;
+            }
+            else
+            {
+                DeleteObject(region);
+            }
         }
 
         /// <summary>주기적 점검: 창이 닫혔는지, 소유 관계가 풀렸는지, 제목이 바뀌었는지.</summary>
@@ -213,6 +302,14 @@ namespace WindowTilingManager.Controls
             if (!IsWindow(_target)) return;
 
             GetWindowRect(_target, out RECT current);
+
+            // 넘치는 부분을 잘라 두었다면 원래대로 (안 그러면 분리한 뒤에도 일부가 안 보임)
+            if (_clipped)
+            {
+                SetWindowRgn(_target, IntPtr.Zero, true);
+                _clipped = false;
+            }
+            _hasRequest = false;
 
             SetOwner(_target, _origOwner);
             SetStyle(_target, GWL_STYLE, _origStyle);

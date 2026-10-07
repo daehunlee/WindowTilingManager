@@ -17,6 +17,17 @@ namespace WindowTilingManager.Native
 
         public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
 
+        // 창의 보이는 영역 자르기 (셀보다 큰 창이 옆 셀을 덮지 않도록)
+        [DllImport("user32.dll")]
+        public static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, [MarshalAs(UnmanagedType.Bool)] bool bRedraw);
+
+        [DllImport("gdi32.dll")]
+        public static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
+        [DllImport("gdi32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool DeleteObject(IntPtr hObject);
+
         public const uint MONITOR_DEFAULTTONEAREST = 2;
         public const int VK_LBUTTON = 0x01;
         public const int VK_RBUTTON = 0x02;

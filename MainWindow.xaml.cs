@@ -105,7 +105,9 @@ namespace WindowTilingManager
 
             LayoutUpdated += (_, _) => SyncEmbeddedWindows();
             LocationChanged += (_, _) => SyncEmbeddedWindows();
-            StateChanged += (_, _) => SyncEmbeddedWindows();
+            // 최대화 ↔ 복원은 셀 크기가 한꺼번에 크게 바뀌고 Windows 애니메이션도 있으므로,
+            // 바로 한 번, 그리고 애니메이션이 끝난 뒤 다시 한 번 전체 위치와 앞뒤 순서를 맞춤
+            StateChanged += (_, _) => ScheduleFullResync();
 
             UpdateStatus();
 
@@ -205,6 +207,29 @@ namespace WindowTilingManager
             if (_hwnd == IntPtr.Zero || WindowState == WindowState.Minimized) return;
             bool ownerVisible = IsVisible;
             foreach (var cell in AllCells()) cell.SyncWindow(ownerVisible);
+        }
+
+        /// <summary>모든 붙은 창의 위치를 처음부터 다시 맞춥니다 (지금, 0.15초 뒤, 0.5초 뒤).</summary>
+        private void ScheduleFullResync()
+        {
+            ResyncAll();
+            foreach (int delay in new[] { 150, 500 })
+            {
+                var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(delay) };
+                timer.Tick += (_, _) =>
+                {
+                    timer.Stop();
+                    ResyncAll();
+                };
+                timer.Start();
+            }
+        }
+
+        private void ResyncAll()
+        {
+            if (_hwnd == IntPtr.Zero || WindowState == WindowState.Minimized) return;
+            foreach (var cell in AllCells()) cell.ResetWindowSync();
+            BringEmbeddedWindowsToFront();
         }
 
         /// <summary>현재 세트에서 보이는 셀의 붙은 창들을 메인 창 위로 올립니다.</summary>

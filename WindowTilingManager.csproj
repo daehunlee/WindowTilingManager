@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>WindowTilingManager</RootNamespace>
     <AssemblyName>WindowTilingManager</AssemblyName>
-    <Version>1.6.0</Version>
+    <Version>1.6.1</Version>
     <!-- 실행 파일(exe) 아이콘 -->
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>

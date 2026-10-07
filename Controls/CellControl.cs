@@ -502,6 +502,9 @@ namespace WindowTilingManager.Controls
             NotifyTitleChanged();
         }
 
+        /// <summary>다음 위치 맞추기 때 무조건 다시 맞추도록 표시합니다.</summary>
+        public void ResetWindowSync() => _host?.ForceResync();
+
         /// <summary>붙어 있는 창을 메인 창 위로 올립니다 (메인 창이 활성일 때만).</summary>
         public void BringWindowToFront() => _host?.BringToFront();
 
